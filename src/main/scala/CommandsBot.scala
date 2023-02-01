@@ -13,43 +13,33 @@ import com.bot4s.telegram.cats.TelegramBot
 import zio._
 import zio.interop.catz._
 
+import logic.ConnectionService
 import util.Implicits._
+import model.model.UserId
 
-case class CommandsBot(token: String)
+case class CommandsBot(token: String, connectionService: ConnectionService)
     extends TelegramBot[Task](token, HttpClientZioBackend().succes(Runtime.default))
     with Polling[Task]
     with Commands[Task]
     with RegexCommands[Task] {
 
-  def secretIsValid(msg: Message) =
-    ZIO.succeed(msg.text.fold(false)(_.split(" ").last == "password"))
+  val commands = List("/start")
 
-  whenF[Task, Message](onMessage, secretIsValid) { implicit msg =>
-    reply(s"${msg.chat.id}").ignore
-  }
-
-  onCommand("/metro") { implicit msg =>
-    reply(s"${msg.chat.id}").ignore
-  }
-
-  onCommand("beer" | "beers") { implicit msg =>
-    reply("Beer menu bla bla...").ignore
-  }
-
-  // withArgs extracts command arguments.
-  onCommand("echo") { implicit msg =>
-    withArgs { args =>
-      reply(args.mkString(" ")).catchErr.ignore
+  onMessage { implicit msg =>
+    msg.text match {
+      case Some(message) if commands.contains(message) => ZIO.unit
+      case Some(message)                               => reply(message).ignore
+      case None                                        => ZIO.unit
     }
   }
 
-  // Handles only /respect2@recipient commands
-  onCommand("respect" & respectRecipient(Some("recipient"))) { implicit msg =>
-    reply("Respectful command").ignore
-  }
+  onCommand("/start") { implicit msg =>
+    val userId = UserId(msg.chat.id)
 
-  // Handles only /respect@<current-botname> commands
-  onCommand("respect2" & RespectRecipient) { implicit msg =>
-    reply("Respectful command #2").ignore
+    for {
+      foundConnection <- connectionService.findConnection(userId)
+      _               <- ZIO.when(foundConnection.isEmpty)(reply("Trying to find a person to speak with you"))
+      _               <- ZIO.when(foundConnection.isDefined)(reply("Found a person to speak with you. Good luck!"))
+    } yield ()
   }
 }

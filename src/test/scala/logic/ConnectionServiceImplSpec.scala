@@ -6,6 +6,7 @@ import zio.ZIO
 import logic.ConnectionService
 import util.Implicits._
 import model.model.UserId
+import dao.ConnectionsDaoInMemory
 
 class ConnectionServiceImplSpec extends BaseSpec {
 
@@ -23,7 +24,19 @@ class ConnectionServiceImplSpec extends BaseSpec {
     idSome should be(Some(UserId(1)))
   }
 
+  "ConnectionServiceImpl" should "not get user to talk with himself" in {
+    val connectionService = makeConnectionService
+
+    val (idNone, idNone2) = (for {
+      idNone  <- connectionService.findConnection(UserId(1))
+      idNone2 <- connectionService.findConnection(UserId(1))
+    } yield ((idNone, idNone2))).run
+
+    idNone should be(None)
+    idNone2 should be(None)
+  }
+
   implicit private val runtime = zio.Runtime.default
   private def makeConnectionService =
-    ZIO.service[ConnectionService].provide(ConnectionServiceImpl.layer).run
+    ZIO.service[ConnectionService].provide(ConnectionsDaoInMemory.layer >>> ConnectionServiceImpl.layer).run
 }
