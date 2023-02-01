@@ -16,6 +16,7 @@ trait ConnectionsDao {
 object ConnectionsDao {
   abstract sealed class ConnectionsDaoError(msg: String) extends RuntimeException(msg)
 
-  case object NotFoundConnectionId     extends ConnectionsDaoError("Not found connection id")
-  case object ConnectionIdRemovedBySet extends ConnectionsDaoError("Illegal removal of connection id")
+  case object NotFoundConnectionId extends ConnectionsDaoError("Not found connection id")
+  case class ConnectionIdShouldBeRemovedFirst(id: ConnectionId)
+      extends ConnectionsDaoError(s"Illegal removal of connection id could occure for [$id]")
 }

@@ -23,8 +23,11 @@ final case class ConnectionsDaoInMemory(data: ConcurrentMap[ConnectionId, Connec
 
   def setConnectionIdPair(id1: ConnectionId, id2: ConnectionId): IO[ConnectionsDaoError, Unit] =
     for {
-      id <- data.put(id1, id2)
-      _  <- ZIO.when(id.isDefined)(ZIO.fail(ConnectionIdRemovedBySet))
+      potentialId  <- data.get(id1)
+      potentialId2 <- data.get(id2)
+      _            <- ZIO.when(potentialId.isDefined)(ZIO.fail(ConnectionIdShouldBeRemovedFirst(id1)))
+      _            <- ZIO.when(potentialId2.isDefined)(ZIO.fail(ConnectionIdShouldBeRemovedFirst(id2)))
+      id           <- data.put(id1, id2)
     } yield ()
 
   def removeConnectionIdPair(connectionId: ConnectionId): IO[ConnectionsDaoError, Unit] =

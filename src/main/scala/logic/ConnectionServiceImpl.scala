@@ -27,21 +27,30 @@ case class ConnectionServiceImpl(idQueue: TQueue[ConnectionId], connectionDao: C
       connectionIdOpt <- getOrSetConnectionId(idOpt, connectionId1)
     } yield (connectionIdOpt)).commit
 
+    // Подумать о том, как решить проблему с уже сущетствующим коннектом
+    // По идее, нам не нужно об этом думать и надо это вынести на уровень выше
     for {
       alreadyConnectedTo <- getIdIfAlreadyConnected
       connectionId <- if (alreadyConnectedTo.isDefined) ZIO.succeed(alreadyConnectedTo)
                       else
                         for {
                           connectionId2 <- connectionId2Get
-                          _ <- ZIO
-                                 .when(connectionId2.isDefined)(
-                                   connectionDao.setConnectionIdPair(connectionId1, connectionId2.get)
-                                 )
-                                 .catchAll { case err: ConnectionsDao.ConnectionsDaoError => ??? }
-                        } yield connectionId2
+                          resultingId   <- setConnectionAndReturnId(connectionId1, connectionId2)
+                        } yield resultingId
     } yield (connectionId.map(id => UserId(id.value)))
 
   }
+
+  private def setConnectionAndReturnId(
+    connectionId1: ConnectionId,
+    connectionId2: Option[ConnectionId]
+  ): UIO[Option[ConnectionId]] =
+    ZIO
+      .when(connectionId2.isDefined)(
+        connectionDao.setConnectionIdPair(connectionId1, connectionId2.get)
+      )
+      .map(_ => connectionId2)
+      .catchAll(_ => ZIO.none)
 
   private def getOrSetConnectionId(
     id: Option[ConnectionId],
