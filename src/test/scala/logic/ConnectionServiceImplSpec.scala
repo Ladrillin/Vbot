@@ -27,13 +27,12 @@ class ConnectionServiceImplSpec extends BaseSpec {
   "ConnectionServiceImpl" should "not get user to talk with himself" in {
     val connectionService = makeConnectionService
 
-    val (idNone, idNone2) = (for {
-      idNone  <- connectionService.findConnection(UserId(1))
-      idNone2 <- connectionService.findConnection(UserId(1))
-    } yield ((idNone, idNone2))).run
-
-    idNone should be(None)
-    idNone2 should be(None)
+    a[ConnectionService.DuplicateError.type] should be thrownBy {
+      (for {
+        idNone  <- connectionService.findConnection(UserId(1))
+        idNone2 <- connectionService.findConnection(UserId(1))
+      } yield ((idNone, idNone2))).run
+    }
   }
 
   implicit private val runtime = zio.Runtime.default

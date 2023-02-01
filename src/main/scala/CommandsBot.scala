@@ -37,9 +37,12 @@ case class CommandsBot(token: String, connectionService: ConnectionService)
     val userId = UserId(msg.chat.id)
 
     for {
-      foundConnection <- connectionService.findConnection(userId)
-      _               <- ZIO.when(foundConnection.isEmpty)(reply("Trying to find a person to speak with you"))
-      _               <- ZIO.when(foundConnection.isDefined)(reply("Found a person to speak with you. Good luck!"))
+      foundConnection <-
+        connectionService.findConnection(userId).catchAll { case _ =>
+          ZIO.none
+        }
+      _ <- ZIO.when(foundConnection.isEmpty)(reply("Trying to find a person to speak with you"))
+      _ <- ZIO.when(foundConnection.isDefined)(reply("Found a person to speak with you. Good luck!"))
     } yield ()
   }
 }

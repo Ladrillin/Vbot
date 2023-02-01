@@ -8,13 +8,14 @@ import zio.stm.ZSTM
 import zio._
 import dao.ConnectionsDao
 import dao.ConnectionsDao._
+import logic.ConnectionService._
 
 // Queue must be unbounded or it may cause an error on a lot of offering ids
 // Actually, may be not, if the transaction is atomic
 case class ConnectionServiceImpl(idQueue: TQueue[ConnectionId], connectionDao: ConnectionsDao)
     extends ConnectionService {
 
-  override def findConnection(id: UserId): UIO[Option[UserId]] = {
+  override def findConnection(id: UserId): IO[ConnectionService.ConnectionServiceError, Option[UserId]] = {
     val connectionId1 = ConnectionId(id.value)
 
     val getIdIfAlreadyConnected = connectionDao.getConnectionId(connectionId1).option
@@ -24,33 +25,15 @@ case class ConnectionServiceImpl(idQueue: TQueue[ConnectionId], connectionDao: C
     // Должен починиться тест
     val connectionId2Get = (for {
       idOpt           <- idQueue.peekOption
+      _               <- ZSTM.when(idOpt.exists(_.value == id.value))(ZSTM.fail(DuplicateError))
       connectionIdOpt <- getOrSetConnectionId(idOpt, connectionId1)
     } yield (connectionIdOpt)).commit
 
-    // Подумать о том, как решить проблему с уже сущетствующим коннектом
-    // По идее, нам не нужно об этом думать и надо это вынести на уровень выше
     for {
-      alreadyConnectedTo <- getIdIfAlreadyConnected
-      connectionId <- if (alreadyConnectedTo.isDefined) ZIO.succeed(alreadyConnectedTo)
-                      else
-                        for {
-                          connectionId2 <- connectionId2Get
-                          resultingId   <- setConnectionAndReturnId(connectionId1, connectionId2)
-                        } yield resultingId
-    } yield (connectionId.map(id => UserId(id.value)))
-
+      connectionId2 <- connectionId2Get
+      _             <- ZIO.when(connectionId2.isDefined)(connectionDao.setConnectionIdPair(connectionId1, connectionId2.get).orDie)
+    } yield (connectionId2.map(id => UserId(id.value)))
   }
-
-  private def setConnectionAndReturnId(
-    connectionId1: ConnectionId,
-    connectionId2: Option[ConnectionId]
-  ): UIO[Option[ConnectionId]] =
-    ZIO
-      .when(connectionId2.isDefined)(
-        connectionDao.setConnectionIdPair(connectionId1, connectionId2.get)
-      )
-      .map(_ => connectionId2)
-      .catchAll(_ => ZIO.none)
 
   private def getOrSetConnectionId(
     id: Option[ConnectionId],

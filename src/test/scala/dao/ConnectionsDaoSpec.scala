@@ -21,7 +21,7 @@ class ConnectionsDaoSpec extends BaseSpec {
   "ConnectionsDao" should "get error when changing pair" in {
     val connectionsDao = makeConnectionsDao
 
-    a[ConnectionIdRemovedBySet.type] should be thrownBy {
+    a[ConnectionIdShouldBeRemovedFirst] should be thrownBy {
       (for {
         _  <- connectionsDao.setConnectionIdPair(ConnectionId(1), ConnectionId(2))
         id <- connectionsDao.setConnectionIdPair(ConnectionId(1), ConnectionId(3))

@@ -10,4 +10,6 @@ trait ConnectionService {
 
 object ConnectionService {
   sealed abstract class ConnectionServiceError(msg: String) extends RuntimeException(msg)
+
+  case object DuplicateError extends ConnectionServiceError("Duplicate in connection occured")
 }
