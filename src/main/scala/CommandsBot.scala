@@ -1,4 +1,4 @@
-package test
+package vbot
 
 import sttp.client3.httpclient.zio.HttpClientZioBackend
 import org.asynchttpclient.Dsl.asyncHttpClient
@@ -16,8 +16,11 @@ import zio.interop.catz._
 import logic.ConnectionService
 import util.Implicits._
 import model.model.UserId
+import model.model.ConnectionId
+import dao.ConnectionsDao
+import com.bot4s.telegram.methods.SendMessage
 
-case class CommandsBot(token: String, connectionService: ConnectionService)
+case class CommandsBot(token: String, connectionService: ConnectionService, connectionDao: ConnectionsDao)
     extends TelegramBot[Task](token, HttpClientZioBackend().succes(Runtime.default))
     with Polling[Task]
     with Commands[Task]
@@ -26,10 +29,18 @@ case class CommandsBot(token: String, connectionService: ConnectionService)
   val commands = List("/start")
 
   onMessage { implicit msg =>
+    val connectionId = ConnectionId(msg.chat.id)
+
     msg.text match {
       case Some(message) if commands.contains(message) => ZIO.unit
-      case Some(message)                               => reply(message).ignore
-      case None                                        => ZIO.unit
+      case Some(message) =>
+        connectionDao
+          .getConnectionId(connectionId)
+          .map { connectedUser =>
+            request(SendMessage(connectedUser.value, message))
+          }
+          .ignore
+      case None => ZIO.unit
     }
   }
 

@@ -1,4 +1,4 @@
-package test
+package vbot
 
 import zio.ZIOAppDefault
 import zio._
@@ -11,11 +11,12 @@ import dao.ConnectionsDaoInMemory
 object Main extends ZIOAppDefault {
 
   val token = ZIO.attempt(ConfigFactory.parseResources("application.conf").getString("telegram_token"))
-  def run = for {
+  def run = (for {
     telegram_token <- token
     connectionService <-
-      ZIO.service[ConnectionService].provideLayer(ConnectionsDaoInMemory.layer >>> ConnectionServiceImpl.layer)
-    _ <- CommandsBot(telegram_token, connectionService).run()
-  } yield ()
+      ZIO.service[ConnectionService]
+    connectionDao <- ZIO.service[ConnectionsDao]
+    _             <- CommandsBot(telegram_token, connectionService, connectionDao).run()
+  } yield ()).provideLayer(ConnectionsDaoInMemory.layer >>> ConnectionServiceImpl.layer ++ ConnectionsDaoInMemory.layer)
 
 }

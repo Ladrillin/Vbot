@@ -20,9 +20,6 @@ case class ConnectionServiceImpl(idQueue: TQueue[ConnectionId], connectionDao: C
 
     val getIdIfAlreadyConnected = connectionDao.getConnectionId(connectionId1).option
 
-    // Разматчиться по полученному из очереди id и проверить, что оно не равно id
-    // Если равно, то вернуть None
-    // Должен починиться тест
     val connectionId2Get = (for {
       idOpt           <- idQueue.peekOption
       _               <- ZSTM.when(idOpt.exists(_.value == id.value))(ZSTM.fail(DuplicateError))
