@@ -36,7 +36,8 @@ case class CommandsBot(token: String, connectionService: ConnectionService, conn
       case Some(message) =>
         connectionDao
           .getConnectionId(connectionId)
-          .map { connectedUser =>
+          .tapError(Console.printError(_))
+          .flatMap { connectedUser =>
             request(SendMessage(connectedUser.value, message))
           }
           .ignore

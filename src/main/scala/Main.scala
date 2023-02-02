@@ -12,11 +12,10 @@ object Main extends ZIOAppDefault {
 
   val token = ZIO.attempt(ConfigFactory.parseResources("application.conf").getString("telegram_token"))
   def run = (for {
-    telegram_token <- token
-    connectionService <-
-      ZIO.service[ConnectionService]
-    connectionDao <- ZIO.service[ConnectionsDao]
-    _             <- CommandsBot(telegram_token, connectionService, connectionDao).run()
-  } yield ()).provideLayer(ConnectionsDaoInMemory.layer >>> ConnectionServiceImpl.layer ++ ConnectionsDaoInMemory.layer)
+    telegram_token    <- token
+    connectionService <- ZIO.service[ConnectionService]
+    connectionDao     <- ZIO.service[ConnectionsDao]
+    _                 <- CommandsBot(telegram_token, connectionService, connectionDao).run()
+  } yield ()).provideLayer(ConnectionsDaoInMemory.layer >+> ConnectionServiceImpl.layer)
 
 }
