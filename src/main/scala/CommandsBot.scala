@@ -1,24 +1,17 @@
 package vbot
 
 import sttp.client3.httpclient.zio.HttpClientZioBackend
-import org.asynchttpclient.Dsl.asyncHttpClient
-
-import com.bot4s.telegram.models.Message
-import com.bot4s.telegram.api.declarative._
-import com.bot4s.telegram.api.declarative.CommandFilterMagnet._
-import com.bot4s.telegram.api.declarative.{ Commands, RegexCommands }
+import com.bot4s.telegram.api.declarative.{Commands, RegexCommands}
 import com.bot4s.telegram.cats.Polling
 import com.bot4s.telegram.cats.TelegramBot
-
+import com.bot4s.telegram.methods.SendMessage
 import zio._
 import zio.interop.catz._
-
 import logic.ConnectionService
 import util.Implicits._
 import model.model.UserId
 import model.model.ConnectionId
 import dao.ConnectionsDao
-import com.bot4s.telegram.methods.SendMessage
 
 case class CommandsBot(token: String, connectionService: ConnectionService, connectionDao: ConnectionsDao)
     extends TelegramBot[Task](token, HttpClientZioBackend().succes(Runtime.default))
@@ -50,11 +43,11 @@ case class CommandsBot(token: String, connectionService: ConnectionService, conn
 
     for {
       foundConnection <-
-        connectionService.findConnection(userId).catchAll { case _ =>
-          ZIO.none
-        }
+        connectionService.findConnection(userId).catchAll(_ =>
+          ZIO.none)
       _ <- ZIO.when(foundConnection.isEmpty)(reply("Trying to find a person to speak with you"))
-      _ <- ZIO.when(foundConnection.isDefined)(reply("Found a person to speak with you. Good luck!"))
+      _ <- ZIO.when(foundConnection.isDefined)(reply("Found a person to speak with you. Good luck!") *>
+        request(SendMessage(foundConnection.get.value, "Found someone for you!")))
     } yield ()
   }
 }
