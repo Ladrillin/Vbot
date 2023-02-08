@@ -9,16 +9,8 @@ final case class ConnectionsDaoInMemory(data: ConcurrentMap[ConnectionId, Connec
 
   override def getConnectionId(connectionId: ConnectionId): IO[ConnectionsDaoError, ConnectionId] =
     for {
-      optionalId <- data.collectFirst {
-                      case pair @ (id1, id2) if id1 == connectionId || id2 == connectionId =>
-                        pair match {
-                          case (id1, id2) if id1 == connectionId => id2
-                          case (id1, id2) if id2 == connectionId => id1
-                          case (_, _)                            => throw new Throwable("not possible")
-                        }
-                    }
-
-      id <- ZIO.fromOption(optionalId).mapError(_ => NotFoundConnectionId)
+      optionalId <- data.get(connectionId)
+      id         <- ZIO.fromOption(optionalId).mapError(_ => NotFoundConnectionId)
     } yield (id)
 
   def setConnectionIdPair(id1: ConnectionId, id2: ConnectionId): IO[ConnectionsDaoError, Unit] =
@@ -27,13 +19,15 @@ final case class ConnectionsDaoInMemory(data: ConcurrentMap[ConnectionId, Connec
       potentialId2 <- data.get(id2)
       _            <- ZIO.when(potentialId.isDefined)(ZIO.fail(ConnectionIdShouldBeRemovedFirst(id1)))
       _            <- ZIO.when(potentialId2.isDefined)(ZIO.fail(ConnectionIdShouldBeRemovedFirst(id2)))
-      id           <- data.put(id1, id2)
+      _            <- data.put(id1, id2)
+      _            <- data.put(id2, id1)
     } yield ()
 
   def removeConnectionIdPair(connectionId: ConnectionId): IO[ConnectionsDaoError, Unit] =
     for {
-      value <- data.remove(connectionId)
-      _     <- ZIO.when(value.isEmpty)(ZIO.fail(NotFoundConnectionId))
+      id2 <- data.remove(connectionId)
+      _   <- ZIO.when(id2.isEmpty)(ZIO.fail(NotFoundConnectionId))
+      _   <- data.remove(id2.get)
     } yield ()
 }
 

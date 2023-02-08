@@ -30,7 +30,9 @@ case class ConnectionServiceImpl(idQueue: TQueue[ConnectionId], connectionDao: C
       potentialConnectedId <- getIdIfAlreadyConnected
       _                    <- ZIO.when(potentialConnectedId.isDefined)(ZIO.fail(AlreadyConnected))
       connectionId2        <- connectionId2Get
-      _                    <- ZIO.when(connectionId2.isDefined)(connectionDao.setConnectionIdPair(connectionId1, connectionId2.get).orDie)
+      _ <- ZIO.when(connectionId2.isDefined)(
+             connectionDao.setConnectionIdPair(connectionId1, connectionId2.get).orDie
+           ) // TODO make normal error handling
     } yield (connectionId2.map(id => UserId(id.value)))
   }
 

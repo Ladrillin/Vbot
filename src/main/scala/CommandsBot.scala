@@ -1,7 +1,7 @@
 package vbot
 
 import sttp.client3.httpclient.zio.HttpClientZioBackend
-import com.bot4s.telegram.api.declarative.{Commands, RegexCommands}
+import com.bot4s.telegram.api.declarative.{ Commands, RegexCommands }
 import com.bot4s.telegram.cats.Polling
 import com.bot4s.telegram.cats.TelegramBot
 import com.bot4s.telegram.methods.SendMessage
@@ -12,6 +12,10 @@ import util.Implicits._
 import model.model.UserId
 import model.model.ConnectionId
 import dao.ConnectionsDao
+import com.bot4s.telegram.models.Message
+import com.bot4s.telegram.methods.SendAudio
+import com.bot4s.telegram.models.Audio
+import com.bot4s.telegram.models.InputFile
 
 case class CommandsBot(token: String, connectionService: ConnectionService, connectionDao: ConnectionsDao)
     extends TelegramBot[Task](token, HttpClientZioBackend().succes(Runtime.default))
@@ -21,8 +25,21 @@ case class CommandsBot(token: String, connectionService: ConnectionService, conn
 
   val commands = List("/start")
 
-  onMessage { implicit msg =>
+  onMessage { implicit msg: Message =>
     val connectionId = ConnectionId(msg.chat.id)
+
+    /* add support
+    msg.audio
+    msg.photo
+    msg.sticker
+    msg.video
+    msg.voice
+    msg.document
+    msg.videoNote
+    msg.caption
+    msg.venue
+    msg.location
+     */
 
     msg.text match {
       case Some(message) if commands.contains(message) => ZIO.unit
@@ -43,11 +60,20 @@ case class CommandsBot(token: String, connectionService: ConnectionService, conn
 
     for {
       foundConnection <-
-        connectionService.findConnection(userId).catchAll(_ =>
-          ZIO.none)
+        connectionService.findConnection(userId).catchAll(_ => ZIO.none)
       _ <- ZIO.when(foundConnection.isEmpty)(reply("Trying to find a person to speak with you"))
-      _ <- ZIO.when(foundConnection.isDefined)(reply("Found a person to speak with you. Good luck!") *>
-        request(SendMessage(foundConnection.get.value, "Found someone for you!")))
+      _ <- ZIO.when(foundConnection.isDefined)(
+             reply("Found a person to speak with you. Good luck!") *>
+               request(SendMessage(foundConnection.get.value, "Found someone for you!"))
+           )
     } yield ()
+  }
+
+  onCommand("/next") { implicit msg =>
+    ??? // drop user connection + find new connection
+  }
+
+  onCommand("/stop") { implicit msg =>
+    ??? // drop user connection
   }
 }

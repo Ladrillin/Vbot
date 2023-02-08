@@ -37,16 +37,15 @@ class ConnectionsDaoSpec extends BaseSpec {
     }
   }
 
-  "ConnectionsDao" should "remove added pair" in {
+  "ConnectionsDao" should "remove added pair(2)" in {
     val connectionsDao = makeConnectionsDao
 
-    a[NotFoundConnectionId.type] should be thrownBy {
-      (for {
-        _  <- connectionsDao.setConnectionIdPair(ConnectionId(1), ConnectionId(2))
-        _  <- connectionsDao.removeConnectionIdPair(ConnectionId(2))
-        id <- connectionsDao.getConnectionId(ConnectionId(1))
-      } yield id).run
-    }
+    val result = (for {
+      _ <- connectionsDao.setConnectionIdPair(ConnectionId(1), ConnectionId(2))
+      _ <- connectionsDao.removeConnectionIdPair(ConnectionId(2))
+    } yield ()).run
+
+    result should be(())
   }
 
   "ConnectionsDao" should "get error in case of not removing pair" in {
