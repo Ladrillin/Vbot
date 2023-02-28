@@ -6,6 +6,8 @@ import ConnectionService._
 
 trait ConnectionService {
   def findConnection(id: UserId): IO[ConnectionServiceError, Option[UserId]]
+  def getConnectedUserId(id: UserId): IO[ConnectionServiceError, Option[UserId]]
+  def stopConnection(id: UserId): IO[ConnectionServiceError, Unit]
 }
 
 object ConnectionService {

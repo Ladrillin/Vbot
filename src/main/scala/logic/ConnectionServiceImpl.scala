@@ -15,7 +15,7 @@ import logic.ConnectionService._
 case class ConnectionServiceImpl(idQueue: TQueue[ConnectionId], connectionDao: ConnectionsDao)
     extends ConnectionService {
 
-  override def findConnection(id: UserId): IO[ConnectionService.ConnectionServiceError, Option[UserId]] = {
+  def findConnection(id: UserId): IO[ConnectionService.ConnectionServiceError, Option[UserId]] = {
     val connectionId1 = ConnectionId(id.value)
 
     val getIdIfAlreadyConnected = connectionDao.getConnectionId(connectionId1).option
@@ -35,6 +35,11 @@ case class ConnectionServiceImpl(idQueue: TQueue[ConnectionId], connectionDao: C
            ) // TODO make normal error handling
     } yield (connectionId2.map(id => UserId(id.value)))
   }
+
+  def stopConnection(id: UserId): IO[ConnectionServiceError, Unit] = ???
+
+  def getConnectedUserId(id: UserId): IO[ConnectionServiceError, Option[UserId]] =
+    connectionDao.getConnectionId(id.toConnectionId).option.map(_.map(_.toUserId))
 
   private def getOrSetConnectionId(
     id: Option[ConnectionId],

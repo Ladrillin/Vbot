@@ -16,8 +16,9 @@ import com.bot4s.telegram.models.Message
 import com.bot4s.telegram.methods.SendAudio
 import com.bot4s.telegram.models.Audio
 import com.bot4s.telegram.models.InputFile
+import com.bot4s.telegram.models.User
 
-case class CommandsBot(token: String, connectionService: ConnectionService, connectionDao: ConnectionsDao)
+case class CommandsBot(token: String, connectionService: ConnectionService)
     extends TelegramBot[Task](token, HttpClientZioBackend().succes(Runtime.default))
     with Polling[Task]
     with Commands[Task]
@@ -26,7 +27,7 @@ case class CommandsBot(token: String, connectionService: ConnectionService, conn
   val commands = List("/start")
 
   onMessage { implicit msg: Message =>
-    val connectionId = ConnectionId(msg.chat.id)
+    val userId = UserId(msg.chat.id)
 
     /* add support
     msg.audio
@@ -44,9 +45,9 @@ case class CommandsBot(token: String, connectionService: ConnectionService, conn
     msg.text match {
       case Some(message) if commands.contains(message) => ZIO.unit
       case Some(message) =>
-        connectionDao
-          .getConnectionId(connectionId)
-          .tapError(Console.printError(_))
+        connectionService
+          .getConnectedUserId(userId)
+          .some
           .flatMap { connectedUser =>
             request(SendMessage(connectedUser.value, message))
           }
